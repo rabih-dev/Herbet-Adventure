@@ -10,8 +10,11 @@ public class SeekerAngel : MonoBehaviour
     [SerializeField] private float speed;
     [SerializeField] private float nextWayPointDistance;
     [SerializeField] private bool lookAhead;
+
+    [SerializeField] private bool isAlsoAPatroller;
     [SerializeField] private float visionRange; //add campo de visao e patrol enquanto fora dele
-        
+    [SerializeField] private LayerMask playerMask;
+    private LinearPatrol patrolScript;
     
     private int currentWaypoint;
     
@@ -26,7 +29,8 @@ public class SeekerAngel : MonoBehaviour
         currentWaypoint = 0;
         rb = GetComponent<Rigidbody2D>();
         sk = GetComponent<Seeker>();
-        enemyCombat = GetComponent<EnemyCombat>();            
+        enemyCombat = GetComponent<EnemyCombat>();
+        patrolScript = GetComponent<LinearPatrol>();
         InvokeRepeating("UpdatePath",1f, 0.5f);
     }
    
@@ -36,9 +40,19 @@ public class SeekerAngel : MonoBehaviour
         {
             return;
         }
-        
+
+
+
+        if (!isAlsoAPatroller)
+        {
             FollowPlayer();
             LookAtPlayer();
+        }
+
+        else
+        {
+            FollowIfInRange();
+        }
     }
 
     void UpdatePath()
@@ -53,6 +67,22 @@ public class SeekerAngel : MonoBehaviour
         if (!p.error)
         {
             path = p;
+        }
+    }
+
+    void FollowIfInRange() 
+    {
+        bool playerInRange = Physics2D.OverlapCircle(transform.position, visionRange, playerMask);
+        if (playerInRange)
+        {
+            FollowPlayer();
+            LookAtPlayer();
+            patrolScript.canPatrol = false;
+        }
+
+        else
+        {
+            patrolScript.canPatrol = true;
         }
     }
 
@@ -85,6 +115,12 @@ public class SeekerAngel : MonoBehaviour
         }
     }
 
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(transform.position, visionRange);
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {       
         if (collision.gameObject.CompareTag("Player"))
@@ -92,4 +128,5 @@ public class SeekerAngel : MonoBehaviour
             Singleton.GetInstance.playerCombat.TakeDamage(enemyCombat.atkDmg);
         }
     }
+
 }

@@ -100,7 +100,7 @@ public class PlayerCombat : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        Gizmos.DrawSphere(atkPoint.position, atkRange);
+        Gizmos.DrawWireSphere(atkPoint.position, atkRange);
     }
 
     IEnumerator StunningPlayer(float stunTime)

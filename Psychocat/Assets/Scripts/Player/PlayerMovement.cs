@@ -8,25 +8,28 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Movement Values")]
     public float moveSpeed;
-    public float jumpStrength;   
+    public float jumpStrength;
     private float horizontalAxis;
-
-    [Header("Jumping Refinement")]
     public float fallMultiplier;
-    public float hangTime;
-    private float hangTimeCounter;
-    public float jumpBufferTime;
-    private float jumpBufferCounter;
     [Tooltip("0.5f is generally a good number")]
-    [Range(0f,1f)]
+    [Range(0f, 1f)]
     public float jumpCutAmount;
 
-    
+    [Header("Double Jump")]
+    public int amountOfJumps;
+    private int jumpsLeft;
+
+    [Header("Jump Buffer")]
+    [SerializeField] private Transform bufferRange;
+    private bool hasBufferedJump;
+
+    [Header("WallJump")]
+    [SerializeField] private Transform wallChecker;
+
     
     //groundcheck stuff
     [Header("Ground Check")]
-    [SerializeField] private Vector2 groundCheckOffset;
-    private Vector2 groundCheckPos;
+    [SerializeField] private Transform groundCheckPos;    
     [SerializeField] private float groundCheckRadius;
     private bool isOnGround;
     [SerializeField] private LayerMask platform;
@@ -36,46 +39,64 @@ public class PlayerMovement : MonoBehaviour
     private void Start()
     {
         canMove = true;
-        hangTimeCounter = hangTime;
+        hasBufferedJump = false;
+        amountOfJumps = amountOfJumps - 1; // corrigindo pois no meio do ar no primeiro pulo ele conta como se estivesse no chao e reseta a qtd de pulos;
+        
     }
 
     private void Update()
     {
+      
         GettingInputs();
         JumpFall();
-        HangTimeCheck();       
+        JumpCheckings();
+
     }
 
     void FixedUpdate()
     {       
         GroundChecking();
         Walking();
-        Jump();
     }
 
     #region functions
 
     void GettingInputs()
     {
-
-        JumpBuffering();
+        
         horizontalAxis = Input.GetAxisRaw("Horizontal");
-        if (Input.GetButtonUp("Jump"))
+
+        if (Input.GetButtonUp("Jump")) //cutting the jump
         {
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * 0.5f);
         }
     }
 
-    void JumpBuffering()
+    void JumpCheckings()
     {
-        if (Input.GetButtonDown("Jump"))
-            {
-            jumpBufferCounter = jumpBufferTime;
-            }
+        JumpBuffer();
 
-        else
+        if (Input.GetButtonDown("Jump") && jumpsLeft > 0)
         {
-            jumpBufferCounter -= Time.deltaTime;
+            Jump();
+            print("pulei normal");
+        }
+
+        else if (isOnGround && hasBufferedJump)
+        {            
+            hasBufferedJump = false;
+            Jump();
+
+            print("pulei no buffer");
+        }
+    }
+
+    void JumpBuffer()
+    {
+        bool iSInBufferRange = Physics2D.Linecast(transform.position, bufferRange.position, platform);
+        if (Input.GetButtonDown("Jump") && iSInBufferRange && jumpsLeft <= 0)
+        {
+            hasBufferedJump = true;
         }
     }
 
@@ -98,12 +119,9 @@ public class PlayerMovement : MonoBehaviour
     }
 
     void Jump()
-    {
-        if (canMove && hangTimeCounter > 0 && jumpBufferCounter > 0)
-        {
-            hangTimeCounter = 0;
-            rb.velocity = (new Vector2(rb.velocity.x, jumpStrength));
-        }      
+    {        
+                jumpsLeft--;
+                rb.velocity = (new Vector2(rb.velocity.x, jumpStrength));
     }
 
     void JumpFall()
@@ -116,24 +134,16 @@ public class PlayerMovement : MonoBehaviour
 
     
 
-    void HangTimeCheck()
-    {
-        if (isOnGround)
-        {
-            hangTimeCounter = hangTime;
-        }
-
-        else
-        {
-            hangTimeCounter -= Time.deltaTime;
-        }
-    }
-
 
     void GroundChecking()
-    {
-        groundCheckPos = new Vector2(transform.position.x + groundCheckOffset.x, transform.position.y + groundCheckOffset.y);
-        isOnGround = Physics2D.OverlapCircle(groundCheckPos, groundCheckRadius, platform);       
+    {       
+        isOnGround = Physics2D.OverlapCircle(groundCheckPos.position, groundCheckRadius, platform);
+
+        if (isOnGround)
+        {
+            jumpsLeft = amountOfJumps;
+            
+        }
     }
 
      public IEnumerator StoppingMovement(float howMuchTime)
@@ -163,7 +173,11 @@ public class PlayerMovement : MonoBehaviour
     {
         //debug do groundcheck
         Gizmos.color = Color.magenta;
-        Gizmos.DrawWireSphere(groundCheckPos, groundCheckRadius);
+        Gizmos.DrawWireSphere(groundCheckPos.position, groundCheckRadius);
+
+        //debug do jump buffer
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, bufferRange.position);
     }
     #endregion functions
 

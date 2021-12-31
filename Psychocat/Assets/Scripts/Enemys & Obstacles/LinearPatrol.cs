@@ -12,16 +12,24 @@ public class LinearPatrol : MonoBehaviour
 
     [Header("startPos must have the x smaller than endPos if u are going use this")]
     [SerializeField] private bool lookAhead;
+   
+    [HideInInspector] public bool canPatrol; // utilizado quando o inimigo também é um patroller
+
+    
 
     void Start()
     {
         nextPos = startPos.position;
+        canPatrol = true;
     }
 
     void Update()
     {
-        Moving();
-        CheckingDirection();
+        if (canPatrol)
+        {
+            Moving();
+            CheckingDirection();
+        }
     }
 
     void Moving()
